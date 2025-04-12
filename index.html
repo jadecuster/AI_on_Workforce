@@ -4,13 +4,481 @@
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>AI On Workforce</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
+    <style>
+      .axis-x path,
+      .axis-y path {
+        fill: none;
+        stroke: black;
+        shape-rendering: crispEdges;
+      }
+
+      .axis-x .tick line,
+      .axis-y .tick line {
+        stroke: #ccc;
+      }
+
+      .axis text {
+        font-size: 10px;
+      }
+
+	   .box {
+	    fill: #69b3a2;
+	    stroke: #333;
+	    stroke-width: 1;
+	  }
+
+	  .circle {
+        fill-opacity: 0.8;
+        stroke: black;
+        stroke-width: 0.5;
+      }
+
+      .axis-label {
+        font-size: 12px;
+        font-weight: bold;
+      }
+
+      .dot-label {
+        font-size: 11px;
+        text-anchor: middle;
+      }
+    </style>
 <body>
 
 <h1>AI on Workforce - Jade Custer
 </h1>
 
-<body>I intend to create a dashboard style website to explain the effects of AI on the workforce including how prevalent it is in certain workforces as well as how much at risk certain jobs are to being taken over by automation and AI. Another big factor that I want to show is the cities most affected by AI and automation and see why.</body>
-	
+<h2>Charts Not Made in D3</h2>
+<img src="Treemap.png" width=400 height=400>
+<img src="chloropleth.png" width=400 height=400>
+
+
+<h2>Charts Made in D3</h2>
+
+    <div id="ai-adoption"></div>
+    <div id="automation-risk"></div>
+
+    <script>
+      const width = 400;
+      const height = 300;
+      const margin = {
+        top: 40,
+        right: 20,
+        bottom: 60,
+        left: 60,
+      };
+
+      const dataURL =
+        'https://gist.githubusercontent.com/jadecuster/ba9f28bdd7885a9bdcedcbd87012c4ff/raw/20afe3fc4ccbd7c2ac7e358d547d1c2243742212/ai-analytics.csv';
+
+      function drawBoxPlot(containerID, groupField, title) {
+        const svg = d3
+          .select(containerID)
+          .append('svg')
+          .attr('width', width + margin.left + margin.right)
+          .attr(
+            'height',
+            height + margin.top + margin.bottom,
+          )
+          .append('g')
+          .attr(
+            'transform',
+            `translate(${margin.left},${margin.top})`,
+          );
+
+        d3.csv(dataURL).then((data) => {
+          data.forEach((d) => {
+            d.Salary_USD = +d.Salary_USD;
+          });
+
+          const grouped = Array.from(
+            d3.group(data, (d) => d[groupField]),
+            ([key, values]) => {
+              const salaries = values
+                .map((d) => d.Salary_USD)
+                .sort(d3.ascending);
+              return {
+                key,
+                q1: d3.quantile(salaries, 0.25),
+                median: d3.quantile(salaries, 0.5),
+                q3: d3.quantile(salaries, 0.75),
+                min: d3.min(salaries),
+                max: d3.max(salaries),
+              };
+            },
+          );
+
+          const x = d3
+            .scaleBand()
+            .domain(grouped.map((d) => d.key))
+            .range([0, width])
+            .padding(0.3);
+
+          const y = d3
+            .scaleLinear()
+            .domain([0, d3.max(grouped, (d) => d.max)])
+            .nice()
+            .range([height, 0]);
+
+          svg
+            .append('g')
+            .attr('transform', `translate(0, ${height})`)
+            .call(d3.axisBottom(x));
+
+          svg.append('g').call(d3.axisLeft(y));
+
+          // Boxes
+          svg
+            .selectAll('.box')
+            .data(grouped)
+            .enter()
+            .append('rect')
+            .attr('class', 'box')
+            .attr('x', (d) => x(d.key))
+            .attr('y', (d) => y(d.q3))
+            .attr('width', x.bandwidth())
+            .attr('height', (d) => y(d.q1) - y(d.q3));
+
+          // Median line
+          svg
+            .selectAll('.median')
+            .data(grouped)
+            .enter()
+            .append('line')
+            .attr('class', 'median')
+            .attr('x1', (d) => x(d.key))
+            .attr('x2', (d) => x(d.key) + x.bandwidth())
+            .attr('y1', (d) => y(d.median))
+            .attr('y2', (d) => y(d.median));
+
+          // Whiskers
+          svg
+            .selectAll('.min')
+            .data(grouped)
+            .enter()
+            .append('line')
+            .attr('x1', (d) => x(d.key) + x.bandwidth() / 2)
+            .attr('x2', (d) => x(d.key) + x.bandwidth() / 2)
+            .attr('y1', (d) => y(d.min))
+            .attr('y2', (d) => y(d.q1))
+            .attr('stroke', '#333');
+
+          svg
+            .selectAll('.max')
+            .data(grouped)
+            .enter()
+            .append('line')
+            .attr('x1', (d) => x(d.key) + x.bandwidth() / 2)
+            .attr('x2', (d) => x(d.key) + x.bandwidth() / 2)
+            .attr('y1', (d) => y(d.q3))
+            .attr('y2', (d) => y(d.max))
+            .attr('stroke', '#333');
+
+          // Title
+          svg
+            .append('text')
+            .attr('x', width / 2)
+            .attr('y', -10)
+            .attr('text-anchor', 'middle')
+            .style('font-size', '14px')
+            .text(title);
+
+          // Y label
+          svg
+            .append('text')
+            .attr('transform', 'rotate(-90)')
+            .attr('x', -height / 2)
+            .attr('y', -margin.left + 15)
+            .attr('text-anchor', 'middle')
+            .text('Salary (USD)');
+        });
+      }
+
+      drawBoxPlot(
+        '#ai-adoption',
+        'AI_Adoption_Level',
+        'Salary by AI Adoption Level',
+      );
+      drawBoxPlot(
+        '#automation-risk',
+        'Automation_Risk',
+        'Salary by Automation Risk',
+      );
+    </script>
+   
+    <div id="chart-container"></div>
+    <script>
+    //Bar Chart D3 Visualization
+    const svgWidth = 500;
+	const svgHeight = 500;
+
+	const svgBar = d3
+	.select('#chart-container')
+	.append('svg')
+	.attr('width', svgWidth)
+	.attr('height', svgHeight )
+	.append('g')
+	.attr(
+	  'transform',
+	  `translate(${margin.left},${margin.top})`,
+	);
+
+	d3.csv(dataURL).then(function (data) {
+	// Define categories
+	const risks = ['Low', 'Medium', 'High'];
+	const industries = Array.from(
+	  new Set(data.map((d) => d.Industry)),
+	);
+
+	// Initialize structure
+	const industryData = {};
+	industries.forEach((ind) => {
+	  industryData[ind] = {
+	    Low: 0,
+	    Medium: 0,
+	    High: 0,
+	  };
+	});
+
+	// Populate counts
+	data.forEach((d) => {
+	  const ind = d.Industry;
+	  const risk = d.Automation_Risk;
+	  if (industryData[ind] && risks.includes(risk)) {
+	    industryData[ind][risk]++;
+	  }
+	});
+
+	// Reshape for stacking
+	const formattedData = industries.map((ind) => ({
+	  Industry: ind,
+	  ...industryData[ind],
+	}));
+
+	const stack = d3.stack().keys(risks);
+	const series = stack(formattedData);
+
+	// Scales
+	const x = d3
+	  .scaleBand()
+	  .domain(industries)
+	  .range([0, width])
+	  .padding(0.2);
+
+	const y = d3
+	  .scaleLinear()
+	  .domain([
+	    0,
+	    d3.max(
+	      formattedData,
+	      (d) => d.Low + d.Medium + d.High,
+	    ),
+	  ])
+	  .nice()
+	  .range([height, 0]);
+
+	const color = d3
+	  .scaleOrdinal()
+	  .domain(risks)
+	  .range(['#66c2a5', '#FDFF80', '#F03228']);
+
+	// Add stacked bars
+	svgBar
+	  .append('g')
+	  .selectAll('g')
+	  .data(series)
+	  .enter()
+	  .append('g')
+	  .attr('fill', (d) => color(d.key))
+	  .selectAll('rect')
+	  .data((d) => d)
+	  .enter()
+	  .append('rect')
+	  .attr('x', (d) => x(d.data.Industry))
+	  .attr('y', (d) => y(d[1]))
+	  .attr('height', (d) => y(d[0]) - y(d[1]))
+	  .attr('width', x.bandwidth());
+
+	// X Axis
+	svgBar
+	  .append('g')
+	  .attr('class', 'axis-x')
+	  .attr('transform', `translate(0,${height})`)
+	  .call(d3.axisBottom(x))
+	  .selectAll('text')
+	  .attr('transform', 'rotate(-40)')
+	  .style('text-anchor', 'end');
+
+	// Y Axis
+	svgBar
+	  .append('g')
+	  .attr('class', 'axis-y')
+	  .call(d3.axisLeft(y));
+
+	// Labels
+	svgBar
+	  .append('text')
+	  .attr('x', width / 2)
+	  .attr('y', height + margin.bottom + 5)
+	  .style('text-anchor', 'middle')
+	  .style('font-size', '14px')
+	  .text('Industry');
+
+	svgBar
+	  .append('text')
+	  .attr('transform', 'rotate(-90)')
+	  .attr('x', -height / 2)
+	  .attr('y', -margin.left + 15)
+	  .style('text-anchor', 'middle')
+	  .style('font-size', '14px')
+	  .text('Job Count');
+
+	// Legend
+	const legend = svgBar
+	  .selectAll('.legend')
+	  .data(risks)
+	  .enter()
+	  .append('g')
+	  .attr(
+	    'transform',
+	    (d, i) => `translate(0, ${i * 20})`,
+	  );
+
+	legend
+	  .append('rect')
+	  .attr('x', width - 20)
+	  .attr('width', 15)
+	  .attr('height', 10)
+	  .attr('fill', (d) => color(d));
+
+	legend
+	  .append('text')
+	  .attr('x', width - 25)
+	  .attr('y', 5)
+	  .attr('text-anchor', 'end')
+	  .style('font-size', '12px')
+	  .text((d) => d);
+	});
+	</script>
+
+	<div id="scatter-avg"></div>
+
+    <script>
+      const svg = d3
+        .select('#scatter-avg')
+        .append('svg')
+        .attr('width', width + margin.left + margin.right)
+        .attr('height', height + margin.top + margin.bottom)
+        .append('g')
+        .attr(
+          'transform',
+          `translate(${margin.left},${margin.top})`,
+        );
+
+      const riskLevels = ['Low', 'Medium', 'High'];
+      const riskToNum = { Low: 1, Medium: 2, High: 3 };
+      const numToRisk = {
+        1: 'Low',
+        2: 'Medium',
+        3: 'High',
+      };
+
+      const x = d3
+        .scaleLinear()
+        .domain([1, 3])
+        .range([0, width]);
+      const y = d3
+        .scaleLinear()
+        .domain([1, 3])
+        .range([height, 0]);
+
+      const color = d3.scaleOrdinal(d3.schemeCategory10);
+
+ 
+      d3.csv(dataURL).then((data) => {
+        // Convert to numeric values
+        data.forEach((d) => {
+          d.ai = riskToNum[d.AI_Adoption_Level];
+          d.auto = riskToNum[d.Automation_Risk];
+        });
+
+        // Group by skill and calculate averages
+        const skillMap = d3.rollups(
+          data,
+          (v) => ({
+            avgAI: d3.mean(v, (d) => d.ai),
+            avgAuto: d3.mean(v, (d) => d.auto),
+          }),
+          (d) => d.Required_Skills,
+        );
+
+        // Turn into array of objects
+        const avgData = skillMap.map(([skill, vals]) => ({
+          skill,
+          avgAI: vals.avgAI,
+          avgAuto: vals.avgAuto,
+        }));
+
+        // Axes
+        svg
+          .append('g')
+          .attr('transform', `translate(0, ${height})`)
+          .call(
+            d3
+              .axisBottom(x)
+              .ticks(3)
+              .tickFormat((d) => numToRisk[d]),
+          );
+
+        svg.append('g').call(
+          d3
+            .axisLeft(y)
+            .ticks(3)
+            .tickFormat((d) => numToRisk[d]),
+        );
+
+        // Axis labels
+        svg
+          .append('text')
+          .attr('x', width / 2)
+          .attr('y', height + margin.bottom - 10)
+          .attr('text-anchor', 'middle')
+          .attr('class', 'axis-label')
+          .text('Avg. AI Adoption Level');
+
+        svg
+          .append('text')
+          .attr('transform', 'rotate(-90)')
+          .attr('x', -height / 2)
+          .attr('y', -margin.left + 20)
+          .attr('text-anchor', 'middle')
+          .attr('class', 'axis-label')
+          .text('Avg. Automation Risk');
+
+        // Points
+        svg
+          .selectAll('circle')
+          .data(avgData)
+          .enter()
+          .append('circle')
+          .attr('cx', (d) => x(d.avgAI))
+          .attr('cy', (d) => y(d.avgAuto))
+          .attr('r', 7)
+          .attr('fill', (d) => color(d.skill));
+
+        // Labels
+        svg
+          .selectAll('.dot-label')
+          .data(avgData)
+          .enter()
+          .append('text')
+          .attr('class', 'dot-label')
+          .attr('x', (d) => x(d.avgAI))
+          .attr('y', (d) => y(d.avgAuto) - 10)
+          .text((d) => d.skill);
+      });
+    </script>
 </body>
 </html>
