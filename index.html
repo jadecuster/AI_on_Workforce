@@ -6,6 +6,7 @@
   <title>AI On Workforce</title>
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script src="https://unpkg.com/scrollama"></script>
+  <!-- setting up style for the website -->
   <style>
     body {
       background-color: #343541;
@@ -14,10 +15,12 @@
       margin: 0;
       padding: 0;
     }
+
     .header {
       text-align: center;
       padding: 20px;
     }
+
     #scrolly {
       display: flex;
       margin-top: 30px;
@@ -43,14 +46,17 @@
       align-items: center;
       justify-content: center;
     }
+
     #chart-area {
       width: 90%;
       height: 90%;
     }
+
     #text {
       width: 40%;
       padding: 20px;
     }
+
     .step {
       margin-bottom: 60vh;
       padding: 20px;
@@ -125,19 +131,21 @@
       transition: opacity 0.2s;
       }
 
-  .axis-x text,
-  .axis-y text {
-    fill: black;
-    font-size: 15px;
-  }
+    .axis-x text,
+    .axis-y text {
+      fill: black;
+      font-size: 15px;
+    }
   </style>
 </head>
 
 <body>
 <div class="header">
   <h1>AI's Impact on the Workforce</h1>
+  <p>Jade Custer</p>
 </div>
 
+<!-- text boxes oriented on right side -->
 <div id="scrolly">
   <div id="graphic">
     <div id="chart-area"></div>
@@ -170,10 +178,12 @@
   </div>
 </div>
 
+<!-- Methodology Section underneath  -->
 <div id="below-scrolly">
   <h2>Methodology</h2>
   <p>Works Cited</p>
     <ul>
+    <li>Data Wrapper</li>
     <li>AI Safety for Everyone - arXiv</li>
     <li>Manyika, James, and Kevin Sneader. AI, AUTOMATION, AND THE FUTURE OF WORK: TEN THINGS TO SOLVE FOR. McKinsey & Company</li>
     <li>Müller, Vincent C. Ethics of Artificial Intelligence and Robotics. Stanford Encyclopedia of Philosophy</li>
@@ -209,7 +219,9 @@ scroller
     updateChart(stepIndex);
   });
 
+// function that updates the chart based on the text that is currently showing
 function updateChart(step) {
+  //creating chart area
   d3.select("#chart-area")
     .transition()
     .duration(200)
@@ -217,6 +229,7 @@ function updateChart(step) {
     .on("end", function () {
       d3.select("#chart-area").html("");
 
+      //updating chart based on step
       if (step === 0) {
         d3.select("#chart-area").html(`
       <iframe title="Automation and AI Risk Globally " aria-label="Map" id="datawrapper-chart-N85ch" src="https://datawrapper.dwcdn.net/N85ch/3/" scrolling="no" frameborder="0" style="border: none;" width="800" height="800" data-external="1"></iframe>
@@ -233,7 +246,7 @@ function updateChart(step) {
         drawBoxPlot("#chart-area",'Automation_Risk', 'Salary by Automation Risk');
       }
 
-      // Fade in new chart
+      // fade in new chart
       d3.select("#chart-area")
         .transition()
         .duration(200)
@@ -423,19 +436,22 @@ function drawBarChart() {
   });
 }
 
+//drawing tree map
 function drawTreemap() {
-const svg = d3.select("#chart-area")
+  const svg = d3.select("#chart-area")
     .append("svg")
     .attr("width", width + margin.left + margin.right)
     .attr("height", height + margin.top + margin.bottom);
 
-const titleHeight = 40;
+  const titleHeight = 40;
 
-const color = d3
+  //same color scheme from other charts
+  const color = d3
   .scaleOrdinal()
-  .range(['#66c2a5', '#FDFF80', '#F03228']); // AI Adoption Level colors
+  .range(['#66c2a5', '#FDFF80', '#F03228']);
 
-d3.csv(dataURL).then(data => {
+  //reading in needed data for chart
+  d3.csv(dataURL).then(data => {
   const aiAdoptionLevels = Array.from(new Set(data.map(d => d.AI_Adoption_Level)));
   color.domain(aiAdoptionLevels);
 
@@ -445,7 +461,7 @@ d3.csv(dataURL).then(data => {
 
   const nested = d3.rollup(
     data,
-    v => v, // retain full objects
+    v => v,
     d => d.AI_Adoption_Level,
     d => d.Job_Title
   );
@@ -454,10 +470,12 @@ d3.csv(dataURL).then(data => {
     value instanceof Map ? Array.from(value) : null
   ).sum(([key, value]) => value.length);
 
+  //drawing tree map
   d3.treemap()
     .size([width + 100, height - titleHeight + 100])
     .padding(2)(root);
 
+  //title
   svg.append("text")
     .attr("x", (width + 100) / 2)
     .attr("y", 30)
@@ -475,13 +493,13 @@ d3.csv(dataURL).then(data => {
     .append("g")
     .attr("transform", d => `translate(${d.x0},${d.y0})`);
 
-  // Treemap rectangles
+  //treemap rectangles
   nodes.append("rect")
     .attr("width", d => d.x1 - d.x0)
     .attr("height", d => d.y1 - d.y0)
     .attr("fill", d => color(d.parent.data[0]));
 
-  // Job Title
+  //job title
   nodes.append("text")
     .attr("x", 4)
     .attr("y", 12)
@@ -490,7 +508,7 @@ d3.csv(dataURL).then(data => {
     .style("fill", "black")
     .style("text-anchor", "start");
 
-  // Count
+  //count
   nodes.append("text")
     .attr("x", 4)
     .attr("y", 22)
@@ -499,7 +517,7 @@ d3.csv(dataURL).then(data => {
     .style("fill", "black")
     .style("text-anchor", "start");
 
-  // Company Size 
+  //company size
   nodes.append("text")
     .attr("x", 4)
     .attr("y", 32)
@@ -507,12 +525,12 @@ d3.csv(dataURL).then(data => {
     .style("font-size", '7px')
     .style("fill", "black")
     .style("text-anchor", "start");
-});
-
-
+  });
 }
 
+//drawing scatter plot
 function drawScatterPlot() {
+  //removing tooltips so that they don't get stuck on screen 
   d3.select('.tooltip').remove();
 
   const ssvg = d3.select("#chart-area")
@@ -532,6 +550,7 @@ function drawScatterPlot() {
 
   const color = d3.scaleOrdinal(d3.schemeCategory10);
 
+  //getting neded data for chart
   d3.csv(dataURL).then((data) => {
     data.forEach((d) => {
       d.ai = riskToNum[d.AI_Adoption_Level];
@@ -560,7 +579,7 @@ function drawScatterPlot() {
       });
     });
 
-    // Title
+    //title
     ssvg.append("text")
       .attr("x", (width + 100) / 2)
       .attr("y", 20)
@@ -569,7 +588,7 @@ function drawScatterPlot() {
       .style("font-weight", "bold")
       .text("AI Adoption vs. Automation Risk by Job Title and Skill");
 
-    // Axes
+    //axes
     chartGroup.append('g')
       .attr('transform', `translate(0, ${height})`)
       .call(d3.axisBottom(x).ticks(3).tickFormat(d => numToRisk[d]))
@@ -586,7 +605,7 @@ function drawScatterPlot() {
     chartGroup.selectAll(".domain, .tick line")
       .style("stroke", "black");
 
-    // Axis labels
+    //axis labels
     chartGroup.append('text')
       .attr('x', width / 2)
       .attr('y', height + 40)
@@ -604,7 +623,7 @@ function drawScatterPlot() {
       .style('font-weight', "bold")
       .text('Automation Risk');
 
-    // Circles for each industry-skill pair
+    //circles for each industry-skill pair
     const circles = chartGroup.selectAll('circle')
       .data(avgData)
       .enter()
@@ -615,7 +634,7 @@ function drawScatterPlot() {
       .attr('fill', d => color(d.title))
       .attr('opacity', 0.75);
 
-    // Tooltip
+    //tooltips
     const tooltip = d3.select('body')
       .append('div')
       .attr('class', 'tooltip')
@@ -647,7 +666,7 @@ function drawScatterPlot() {
         d3.select(this).attr('stroke', null);
       });
 
-    // Legend by Industry
+    //legend by job title 
     const uniqueTitles = [...new Set(avgData.map(d => d.title))];
 
     const legend = ssvg.append('g')
@@ -679,8 +698,11 @@ function drawScatterPlot() {
   });
 }
 
+//drawing box plot 
 function drawBoxPlot(containerID, groupField, title) {
+  //removing tooltips so that they don't stay on the page.
   d3.select('.tooltip').remove();
+
   const order = ['low', 'medium', 'high'];
 
   const svg = d3
@@ -704,6 +726,7 @@ function drawBoxPlot(containerID, groupField, title) {
     .style('box-shadow', '0 2px 5px rgba(0, 0, 0, 0.3)')
     .style('transition', 'opacity 0.2s');
 
+  //getting necessary data for the charts
   d3.csv(dataURL).then((data) => {
     data.forEach((d) => {
       d.Salary_USD = +d.Salary_USD;
@@ -725,6 +748,7 @@ function drawBoxPlot(containerID, groupField, title) {
       }
     );
 
+    //setting up same color scale from earlier charts
     const color = d3
       .scaleOrdinal()
       .domain(order)
